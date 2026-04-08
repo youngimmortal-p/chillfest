@@ -11,7 +11,8 @@
   
   <!-- QRCode with DOM ready guarantee -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
   <style>
     body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #f8f9fa; }
     h1 { text-align: center; color: #333; margin-bottom: 2rem; }
@@ -66,7 +67,7 @@
       firebase.initializeApp(firebaseConfig);
     }
     const db = firebase.firestore();
-
+    emailjs.init("u9yWeM-XyHO8w3jK6"); 
     // Wait for QRCode to load
     function waitForQRCode(callback) {
       if (typeof QRCode !== 'undefined') {
@@ -108,6 +109,8 @@
           used: false,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+        
+        await sendConfirmationEmail(ticketId, name, email);
 
         showTicket(ticketId, name, email, 'valid');
         
@@ -119,7 +122,25 @@
         btn.innerHTML = '🎫 Generate My Ticket';
       }
     }
-
+    
+    async function sendConfirmationEmail(ticketId, name, email) {
+    try {
+      const response = await emailjs.send('service_dsqdvyn', 'template_epdeeln', {
+        to_name: name,
+        to_email: email,
+        ticket_id: ticketId,
+        generator_url: window.location.href
+      });
+      
+      console.log('✅ Email sent!', response.status, response.text);
+      return true;
+    } catch (error) {
+      console.error('❌ Email failed:', error);
+      // Don't block ticket generation if email fails
+      return false;
+    }
+  }
+  
     function showTicket(ticketId, name, email, status) {
       document.getElementById('ticketId').textContent = ticketId;
       document.getElementById('ticketName').textContent = name;
