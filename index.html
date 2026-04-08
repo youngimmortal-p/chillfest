@@ -6,12 +6,9 @@
   <title>🎟️ Ticket Generator</title>
   
   <!-- Firebase Compat (No duplicates) -->
-  <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
   
   <!-- QRCode with DOM ready guarantee -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  
 
   <style>
     body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #f8f9fa; }
@@ -51,122 +48,133 @@
     <button class="print-btn" onclick="window.print()">🖨️ Print Ticket</button>
   </div>
 
-  <script>
-    // 🔥 Firebase Config (Your perfect config!)
-    const firebaseConfig = {
-      apiKey: "AIzaSyBqrO6qxMSEzP-QX8WYIxSDruHvHbweR3w",
-      authDomain: "ticket-ab343.firebaseapp.com",
-      projectId: "ticket-ab343",
-      storageBucket: "ticket-ab343.firebasestorage.app",
-      messagingSenderId: "248675766848",
-      appId: "1:248675766848:web:79aa612820e7ee7ec605a5"
-    };
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
-    // Initialize Firebase (Prevents duplicates)
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+<script>
+  // 🔥 Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyBqrO6qxMSEzP-QX8WYIxSDruHvHbweR3w",
+    authDomain: "ticket-ab343.firebaseapp.com",
+    projectId: "ticket-ab343",
+    storageBucket: "ticket-ab343.firebasestorage.app",
+    messagingSenderId: "248675766848",
+    appId: "1:248675766848:web:79aa612820e7ee7ec605a5"
+  };
+
+  if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+  }
+  const db = firebase.firestore();
+
+  // 📧 EmailJS - Your keys look correct!
+  emailjs.init("u9yWeM-XyHO8w3jK6");
+
+  // ✅ FIXED: QRCode check
+  function waitForQRCode(callback) {
+    if (typeof QRCode !== 'undefined') {
+      callback();
+    } else {
+      setTimeout(() => waitForQRCode(callback), 100);
     }
-    const db = firebase.firestore();
-    emailjs.init("u9yWeM-XyHO8w3jK6"); 
-    // Wait for QRCode to load
-    function waitForQRCode(callback) {
-      if (typeof QRCode !== 'undefined') {
-        callback();
-      } else {
-        setTimeout(() => waitForQRCode(callback), 100);
-      }
+  }
+
+  async function generateTicket() {
+    const email = document.getElementById('email').value.trim().toLowerCase();
+    const name = document.getElementById('name').value.trim();
+    
+    if (!email || !name) {
+      alert('Please fill name and email!');
+      return;
     }
 
-    async function generateTicket() {
-      const email = document.getElementById('email').value.trim().toLowerCase();
-      const name = document.getElementById('name').value.trim();
-      
-      if (!email || !name) {
-        alert('Please fill name and email!');
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Creating Ticket...';
+
+    try {
+      const docRef = db.collection('tickets').doc(email);
+      const doc = await docRef.get();
+
+      if (doc.exists) {
+        const data = doc.data();
+        showTicket(data.ticketId, name, email, data.used ? 'used' : 'valid');
         return;
       }
 
-      const btn = event.target;
-      btn.disabled = true;
-      btn.innerHTML = '⏳ Creating Ticket...';
+      const ticketId = 'TICKET-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
+      
+      await docRef.set({
+        ticketId,
+        name,
+        email,
+        used: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // 📧 Send email with DEBUG
+      console.log('🚀 Sending email to:', email);
+      const emailSent = await sendConfirmationEmail(ticketId, name, email);
+      console.log('📧 Email result:', emailSent ? 'SENT' : 'FAILED');
 
-      try {
-        const docRef = db.collection('tickets').doc(email);
-        const doc = await docRef.get();
-
-        if (doc.exists) {
-          const data = doc.data();
-          showTicket(data.ticketId, name, email, data.used ? 'used' : 'valid');
-          return;
-        }
-
-        const ticketId = 'TICKET-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
-        
-        await docRef.set({
-          ticketId,
-          name,
-          email,
-          used: false,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        await sendConfirmationEmail(ticketId, name, email);
-
-        showTicket(ticketId, name, email, 'valid');
-        
-      } catch (error) {
-        console.error('Error:', error);
-        alert('Error: ' + error.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '🎫 Generate My Ticket';
-      }
+      showTicket(ticketId, name, email, 'valid');
+      
+    } catch (error) {
+      console.error('❌ Error:', error);
+      alert('Error: ' + error.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '🎫 Generate My Ticket';
     }
-    
-    async function sendConfirmationEmail(ticketId, name, email) {
+  }
+  
+  async function sendConfirmationEmail(ticketId, name, email) {
     try {
-      const response = await emailjs.send('service_dsqdvyn', 'template_epdeeln', {
+      console.log('📤 EmailJS params:', { name, email, ticketId });
+      
+      const response = await emailjs.send('youngimmortal', 'template_epdeeln', {
         to_name: name,
         to_email: email,
         ticket_id: ticketId,
         generator_url: window.location.href
       });
       
-      console.log('✅ Email sent!', response.status, response.text);
+      console.log('✅ EMAIL SENT!', response.status, response.text);
       return true;
     } catch (error) {
-      console.error('❌ Email failed:', error);
-      // Don't block ticket generation if email fails
+      console.error('❌ EMAIL FAILED:', error.status, error.text, error);
       return false;
     }
   }
   
-    function showTicket(ticketId, name, email, status) {
-      document.getElementById('ticketId').textContent = ticketId;
-      document.getElementById('ticketName').textContent = name;
-      document.getElementById('ticketEmail').textContent = email;
-      
-      const statusEl = document.getElementById('status');
-      statusEl.textContent = status === 'valid' ? '✅ VALID TICKET - Ready to scan!' : '⚠️ TICKET ALREADY USED';
-      statusEl.className = `status ${status}`;
-      
-      // ✅ FIXED: Wait for QRCode then generate
-      waitForQRCode(() => {
-        const qrContainer = document.getElementById('qrCode');
-        qrContainer.innerHTML = '';
-        new QRCode(qrContainer, {
-          text: ticketId,
-          width: 240,
-          height: 240,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.H
-        });
+  function showTicket(ticketId, name, email, status) {
+    document.getElementById('ticketId').textContent = ticketId;
+    document.getElementById('ticketName').textContent = name;
+    document.getElementById('ticketEmail').textContent = email;
+    
+    const statusEl = document.getElementById('status');
+    statusEl.textContent = status === 'valid' ? '✅ VALID TICKET - Ready to scan!' : '⚠️ TICKET ALREADY USED';
+    statusEl.className = `status ${status}`;
+    
+    // ✅ FIXED QRCode
+    waitForQRCode(() => {
+      const qrContainer = document.getElementById('qrCode');
+      qrContainer.innerHTML = '';
+      new QRCode(qrContainer, {
+        text: ticketId,
+        width: 240,
+        height: 240,
+        colorDark: "#000000",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.H
       });
-      
-      document.getElementById('ticket').style.display = 'block';
-      document.getElementById('ticket').scrollIntoView({ behavior: 'smooth' });
-    }
-  </script>
+    });
+    
+    document.getElementById('ticket').style.display = 'block';
+    document.getElementById('ticket').scrollIntoView({ behavior: 'smooth' });
+  }
+</script>
 </body>
 </html>
