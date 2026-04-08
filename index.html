@@ -4,80 +4,77 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>🎟️ Ticket Generator</title>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  
+  <!-- Firebase Compat (No duplicates) -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
+  
+  <!-- QRCode with DOM ready guarantee -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  
   <style>
-    * { font-family: 'Arial', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .container { background: white; padding: 2rem; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); max-width: 500px; width: 90%; }
+    body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #f8f9fa; }
     h1 { text-align: center; color: #333; margin-bottom: 2rem; }
-    .form-group { margin-bottom: 1.5rem; }
-    label { display: block; margin-bottom: 0.5rem; font-weight: bold; color: #555; }
-    input { width: 100%; padding: 12px; border: 2px solid #eee; border-radius: 10px; font-size: 16px; transition: border-color 0.3s; }
-    input:focus { outline: none; border-color: #667eea; }
-    button { width: 100%; padding: 15px; background: linear-gradient(45deg, #667eea, #764ba2); color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; transition: transform 0.2s; }
-    button:hover { transform: translateY(-2px); }
-    button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-    
-    /* Ticket */
-    .ticket { display: none; background: white; border: 3px solid #333; border-radius: 15px; padding: 2rem; margin-top: 2rem; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-    .ticket-header { background: linear-gradient(45deg, #ff6b6b, #feca57); color: white; padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; }
-    .ticket-id { font-size: 24px; font-weight: bold; color: #333; margin: 1rem 0; letter-spacing: 3px; }
-    .qr-code { margin: 1.5rem 0; padding: 20px; background: #f8f9fa; border-radius: 10px; }
-    .status { padding: 10px; border-radius: 8px; margin-top: 1rem; font-weight: bold; }
-    .valid { background: #d4edda; color: #155724; }
-    .used { background: #f8d7da; color: #721c24; }
-    
-    @media print { body * { visibility: hidden; } .ticket, .ticket * { visibility: visible; } .ticket { position: absolute; left: 0; top: 0; width: 100%; } }
+    input, button { display: block; width: 100%; margin: 12px 0; padding: 16px; font-size: 16px; border-radius: 12px; border: 2px solid #e9ecef; }
+    input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,.1); }
+    button { background: linear-gradient(45deg,#667eea,#764ba2); color: white; border: none; font-weight: 600; cursor: pointer; transition: all .3s; }
+    button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(102,126,234,.3); }
+    button:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+    #ticket { display: none; border: 3px solid #333; padding: 30px; margin: 30px 0; border-radius: 16px; background: white; box-shadow: 0 20px 40px rgba(0,0,0,.1); }
+    #ticket h3 { color: #333; margin-bottom: 1rem; }
+    #qrCode { width: 240px; height: 240px; margin: 20px auto; border: 4px solid white; border-radius: 12px; background: white; }
+    .ticket-info p { margin: 12px 0; font-size: 1.1em; color: #555; }
+    .status { padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 1.1em; margin: 15px 0; }
+    .status.valid { background: #d4edda; color: #155724; }
+    .status.used { background: #f8d7da; color: #721c24; }
+    .print-btn { background: #28a745 !important; margin-top: 15px; width: auto; padding: 12px 30px; }
+    @media print { body * { visibility: hidden; } #ticket, #ticket * { visibility: visible; position: absolute; left: 0; top: 0; width: 100%; background: white !important; } }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🎟️ Event Ticket Generator</h1>
-    
-    <div class="form-group">
-      <label>📧 Email (One ticket per email)</label>
-      <input type="email" id="email" placeholder="your@email.com" required>
+  <h1>🎟️ Event Ticket Generator</h1>
+  <p style="text-align:center;color:#666;margin-bottom:2rem;">One ticket per email • Scan QR at entrance</p>
+  
+  <input type="email" id="email" placeholder="📧 your.email@example.com" required>
+  <input type="text" id="name" placeholder="👤 Full Name" required>
+  <button onclick="generateTicket()">🎫 Generate My Ticket</button>
+  
+  <div id="ticket">
+    <h3>🎫 Ticket ID: <span id="ticketId"></span></h3>
+    <div id="qrCode"></div>
+    <div class="ticket-info">
+      <p><strong>👤 Name:</strong> <span id="ticketName"></span></p>
+      <p><strong>📧 Email:</strong> <span id="ticketEmail"></span></p>
     </div>
-    
-    <div class="form-group">
-      <label>👤 Full Name</label>
-      <input type="text" id="name" placeholder="John Doe" required>
-    </div>
-    
-    <button onclick="generateTicket()">🎫 Generate My Ticket</button>
-    
-    <div id="ticket" class="ticket">
-      <div class="ticket-header">
-        <h2>🎉 EVENT TICKET</h2>
-      </div>
-      <div class="ticket-id" id="ticketId"></div>
-      <div id="qrCode" class="qr-code"></div>
-      <div id="ticketInfo">
-        <p><strong>Name:</strong> <span id="ticketName"></span></p>
-        <p><strong>Email:</strong> <span id="ticketEmail"></span></p>
-      </div>
-      <div id="status" class="status"></div>
-      <button onclick="window.print()" style="margin-top: 1rem; background: #28a745;">🖨️ Print Ticket</button>
-    </div>
+    <div id="status" class="status">Generating ticket...</div>
+    <button class="print-btn" onclick="window.print()">🖨️ Print Ticket</button>
   </div>
 
   <script>
-    // 🔥 Your Firebase Config (Get from Firebase Console → Project Settings → Web SDK)
+    // 🔥 Firebase Config (Your perfect config!)
     const firebaseConfig = {
-      apiKey: "AIzaSyC070THn2Vy3fqFptFsJ_ArW6Bze2E-6rQ",
-  authDomain: "gameverse-d2382.firebaseapp.com",
-  projectId: "gameverse-d2382",
-  storageBucket: "gameverse-d2382.firebasestorage.app",
-  messagingSenderId: "634170765888",
-  appId: "1:634170765888:web:e4da6c563e74c2d34ba5a5",
-  measurementId: "G-0XSRD4HQSY"
+      apiKey: "AIzaSyBqrO6qxMSEzP-QX8WYIxSDruHvHbweR3w",
+      authDomain: "ticket-ab343.firebaseapp.com",
+      projectId: "ticket-ab343",
+      storageBucket: "ticket-ab343.firebasestorage.app",
+      messagingSenderId: "248675766848",
+      appId: "1:248675766848:web:79aa612820e7ee7ec605a5"
     };
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
+    // Initialize Firebase (Prevents duplicates)
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
     const db = firebase.firestore();
+
+    // Wait for QRCode to load
+    function waitForQRCode(callback) {
+      if (typeof QRCode !== 'undefined') {
+        callback();
+      } else {
+        setTimeout(() => waitForQRCode(callback), 100);
+      }
+    }
 
     async function generateTicket() {
       const email = document.getElementById('email').value.trim().toLowerCase();
@@ -90,10 +87,9 @@
 
       const btn = event.target;
       btn.disabled = true;
-      btn.textContent = 'Generating...';
+      btn.innerHTML = '⏳ Creating Ticket...';
 
       try {
-        // Check if email already has ticket
         const docRef = db.collection('tickets').doc(email);
         const doc = await docRef.get();
 
@@ -103,10 +99,8 @@
           return;
         }
 
-        // Generate NEW unique ticket ID
         const ticketId = 'TICKET-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
         
-        // Save to Firestore (email = document ID = unique!)
         await docRef.set({
           ticketId,
           name,
@@ -119,10 +113,10 @@
         
       } catch (error) {
         console.error('Error:', error);
-        alert('Error generating ticket. Try again!');
+        alert('Error: ' + error.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = '🎫 Generate My Ticket';
+        btn.innerHTML = '🎫 Generate My Ticket';
       }
     }
 
@@ -132,14 +126,21 @@
       document.getElementById('ticketEmail').textContent = email;
       
       const statusEl = document.getElementById('status');
-      statusEl.textContent = status === 'valid' ? '✅ VALID - First Time!' : '⚠️ TICKET ALREADY USED';
+      statusEl.textContent = status === 'valid' ? '✅ VALID TICKET - Ready to scan!' : '⚠️ TICKET ALREADY USED';
       statusEl.className = `status ${status}`;
       
-      // Generate QR Code
-      const qrContainer = document.getElementById('qrCode');
-      qrContainer.innerHTML = '';
-      QRCode.toCanvas(qrContainer, ticketId, { width: 200, margin: 2 }, (error) => {
-        if (error) console.error(error);
+      // ✅ FIXED: Wait for QRCode then generate
+      waitForQRCode(() => {
+        const qrContainer = document.getElementById('qrCode');
+        qrContainer.innerHTML = '';
+        new QRCode(qrContainer, {
+          text: ticketId,
+          width: 240,
+          height: 240,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.H
+        });
       });
       
       document.getElementById('ticket').style.display = 'block';
