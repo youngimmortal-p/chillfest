@@ -2,179 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🎟️ Ticket Generator</title>
+  <title>Ticket Generator</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   
-  <!-- Firebase Compat (No duplicates) -->
-  
-  <!-- QRCode with DOM ready guarantee -->
-  
-
-  <style>
-    body { font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; background: #f8f9fa; }
-    h1 { text-align: center; color: #333; margin-bottom: 2rem; }
-    input, button { display: block; width: 100%; margin: 12px 0; padding: 16px; font-size: 16px; border-radius: 12px; border: 2px solid #e9ecef; }
-    input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,.1); }
-    button { background: linear-gradient(45deg,#667eea,#764ba2); color: white; border: none; font-weight: 600; cursor: pointer; transition: all .3s; }
-    button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(102,126,234,.3); }
-    button:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
-    #ticket { display: none; border: 3px solid #333; padding: 30px; margin: 30px 0; border-radius: 16px; background: white; box-shadow: 0 20px 40px rgba(0,0,0,.1); }
-    #ticket h3 { color: #333; margin-bottom: 1rem; }
-    #qrCode { width: 240px; height: 240px; margin: 20px auto; border: 4px solid white; border-radius: 12px; background: white; }
-    .ticket-info p { margin: 12px 0; font-size: 1.1em; color: #555; }
-    .status { padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 1.1em; margin: 15px 0; }
-    .status.valid { background: #d4edda; color: #155724; }
-    .status.used { background: #f8d7da; color: #721c24; }
-    .print-btn { background: #28a745 !important; margin-top: 15px; width: auto; padding: 12px 30px; }
-    @media print { body * { visibility: hidden; } #ticket, #ticket * { visibility: visible; position: absolute; left: 0; top: 0; width: 100%; background: white !important; } }
-  </style>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>🎟️ Event Ticket Generator</h1>
-  <p style="text-align:center;color:#666;margin-bottom:2rem;">One ticket per email • Scan QR at entrance</p>
-  
-  <input type="email" id="email" placeholder="📧 your.email@example.com" required>
-  <input type="text" id="name" placeholder="👤 Full Name" required>
-  <button onclick="generateTicket()">🎫 Generate My Ticket</button>
-  
-  <div id="ticket">
-    <h3>🎫 Ticket ID: <span id="ticketId"></span></h3>
-    <div id="qrCode"></div>
-    <div class="ticket-info">
-      <p><strong>👤 Name:</strong> <span id="ticketName"></span></p>
-      <p><strong>📧 Email:</strong> <span id="ticketEmail"></span></p>
+
+  <div class="container">
+    <h2>🎫 Event Ticket Generator</h2>
+
+    <input type="text" id="name" placeholder="Your Name" />
+    <input type="email" id="email" placeholder="Your Email" />
+
+    <button id="generateBtn">Generate Ticket</button>
+
+    <div id="ticket" style="display:none;">
+      <h3 id="status"></h3>
+      <p><strong>ID:</strong> <span id="ticketId"></span></p>
+      <p><strong>Name:</strong> <span id="ticketName"></span></p>
+      <p><strong>Email:</strong> <span id="ticketEmail"></span></p>
+      <div id="qrCode"></div>
     </div>
-    <div id="status" class="status">Generating ticket...</div>
-    <button class="print-btn" onclick="window.print()">🖨️ Print Ticket</button>
   </div>
 
-<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore-compat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-
-<script>
-  // 🔥 Firebase Config
-  const firebaseConfig = {
-    apiKey: "AIzaSyBqrO6qxMSEzP-QX8WYIxSDruHvHbweR3w",
-    authDomain: "ticket-ab343.firebaseapp.com",
-    projectId: "ticket-ab343",
-    storageBucket: "ticket-ab343.firebasestorage.app",
-    messagingSenderId: "248675766848",
-    appId: "1:248675766848:web:79aa612820e7ee7ec605a5"
-  };
-
-  if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-  }
-  const db = firebase.firestore();
-
-  // 📧 EmailJS - Your keys look correct!
-  emailjs.init("u9yWeM-XyHO8w3jK6");
-
-  // ✅ FIXED: QRCode check
-  function waitForQRCode(callback) {
-    if (typeof QRCode !== 'undefined') {
-      callback();
-    } else {
-      setTimeout(() => waitForQRCode(callback), 100);
-    }
-  }
-
-  async function generateTicket() {
-    const email = document.getElementById('email').value.trim().toLowerCase();
-    const name = document.getElementById('name').value.trim();
-    
-    if (!email || !name) {
-      alert('Please fill name and email!');
-      return;
-    }
-
-    const btn = event.target;
-    btn.disabled = true;
-    btn.innerHTML = '⏳ Creating Ticket...';
-
-    try {
-      const docRef = db.collection('tickets').doc(email);
-      const doc = await docRef.get();
-
-      if (doc.exists) {
-        const data = doc.data();
-        showTicket(data.ticketId, name, email, data.used ? 'used' : 'valid');
-        return;
-      }
-
-      const ticketId = 'TICKET-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5).toUpperCase();
-      
-      await docRef.set({
-        ticketId,
-        name,
-        email,
-        used: false,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      
-      // 📧 Send email with DEBUG
-      console.log('🚀 Sending email to:', email);
-      const emailSent = await sendConfirmationEmail(ticketId, name, email);
-      console.log('📧 Email result:', emailSent ? 'SENT' : 'FAILED');
-
-      showTicket(ticketId, name, email, 'valid');
-      
-    } catch (error) {
-      console.error('❌ Error:', error);
-      alert('Error: ' + error.message);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '🎫 Generate My Ticket';
-    }
-  }
-  
-  async function sendConfirmationEmail(ticketId, name, email) {
-    try {
-      console.log('📤 EmailJS params:', { name, email, ticketId });
-      
-      const response = await emailjs.send('youngimmortal', 'template_epdeeln', {
-        to_name: name,
-        to_email: email,
-        ticket_id: ticketId,
-        generator_url: window.location.href
-      });
-      
-      console.log('✅ EMAIL SENT!', response.status, response.text);
-      return true;
-    } catch (error) {
-      console.error('❌ EMAIL FAILED:', error.status, error.text, error);
-      return false;
-    }
-  }
-  
-  function showTicket(ticketId, name, email, status) {
-    document.getElementById('ticketId').textContent = ticketId;
-    document.getElementById('ticketName').textContent = name;
-    document.getElementById('ticketEmail').textContent = email;
-    
-    const statusEl = document.getElementById('status');
-    statusEl.textContent = status === 'valid' ? '✅ VALID TICKET - Ready to scan!' : '⚠️ TICKET ALREADY USED';
-    statusEl.className = `status ${status}`;
-    
-    // ✅ FIXED QRCode
-    waitForQRCode(() => {
-      const qrContainer = document.getElementById('qrCode');
-      qrContainer.innerHTML = '';
-      new QRCode(qrContainer, {
-        text: ticketId,
-        width: 240,
-        height: 240,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.H
-      });
-    });
-    
-    document.getElementById('ticket').style.display = 'block';
-    document.getElementById('ticket').scrollIntoView({ behavior: 'smooth' });
-  }
-</script>
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
