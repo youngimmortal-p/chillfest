@@ -146,7 +146,7 @@ function showTicket(ticketId, name, email, status) {
   qrContainer.innerHTML = "";
 
   new QRCode(qrContainer, {
-    text: text: `${window.location.origin}/scan.html?ticket=${ticketId}`,
+    text: `${window.location.origin}/scan.html?ticket=${ticketId}`,
     width: 220,
     height: 220
   });
