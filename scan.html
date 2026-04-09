@@ -3,8 +3,7 @@
 <head>
   <title>Ticket Scanner</title>
 
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  
 
   <!-- QR Camera Scanner -->
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -22,7 +21,40 @@
   <!-- RESULT -->
   <div id="result" style="margin-top:20px; font-size:18px; text-align:center;"></div>
 </div>
+<script type="module" id="firebase-init">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+  import {
+    getFirestore,
+    collection,
+    getDocs,
+    doc,
+    getDoc,
+    setDoc,
+    updateDoc,
+    serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
+  const firebaseConfig = {
+    apiKey: "AIzaSyBqrO6qxMSEzP-QX8WYIxSDruHvHbweR3w",
+    authDomain: "ticket-ab343.firebaseapp.com",
+    projectId: "ticket-ab343"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  // expose to global scope
+  window.firebaseV9 = {
+    db,
+    collection,
+    getDocs,
+    doc,
+    getDoc,
+    setDoc,
+    updateDoc,
+    serverTimestamp
+  };
+</script>
 <script src="scan.js"></script>
 </body>
 </html>
