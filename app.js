@@ -9,7 +9,9 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+document.addEventListener("DomContentLoaded", () => {
+console.log(firebase)
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // Initialize EmailJS
@@ -242,5 +244,5 @@ async function downloadTicket() {
     btn.disabled = false;
   }
 }
-
 console.log("EmailJS:", emailjs);
+});

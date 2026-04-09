@@ -5,7 +5,9 @@ const firebaseConfig = {
   projectId: "ticket-ab343",
 };
 
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+document.addEventListener("DOMContentLoaded", () => {
+  console.log(firebase)
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 const resultDiv = document.getElementById("result");
@@ -122,3 +124,5 @@ window.onload = () => {
   resultDiv.innerHTML = "📡 Ready to scan...";
   startScanner();
 };
+
+});
