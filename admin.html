@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard | Gaming Verse</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; padding: 40px; background: #f0f2f5; }
+    .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+    input { display: block; width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+    button { padding: 10px 20px; background: #6c5ce7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #5b4cc4; }
+    .code-item { background: #f9f9f9; padding: 10px; margin: 5px 0; border-radius: 4px; display: flex; justify-content: space-between; border-left: 4px solid #6c5ce7; }
+    .status-claimed { color: #27ae60; font-weight: bold; }
+    .status-open { color: #f39c12; }
+    .controls { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="loginCard">
+    <h1>Admin Login</h1>
+    <input id="emailInput" placeholder="Email">
+    <input id="passwordInput" type="password" placeholder="Password">
+    <button id="loginBtn">Access Dashboard</button>
+  </div>
+
+  <div class="card" id="adminPanel" style="display: none;">
+    <h1>🎟️ Voucher Management</h1>
+    
+    <div class="controls">
+      <h3>Quick Actions</h3>
+      <button id="generateBtn">Generate Single Code</button>
+      <button id="bulkGenerateBtn" style="background: #2d3436;">Bulk Generate (10)</button>
+    </div>
+
+    <h3>Active Vouchers</h3>
+    <div id="codesList"></div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, collection, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBqrO6qxMSEzP-QX8WYIxSDruHvHbweR3w",
+      authDomain: "ticket-ab343.firebaseapp.com",
+      projectId: "ticket-ab343",
+      storageBucket: "ticket-ab343.firebasestorage.app",
+      messagingSenderId: "248675766848",
+      appId: "1:248675766848:web:79aa612820e7ee7ec605a5"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // --- Authentication Logic ---
+    document.getElementById("loginBtn").addEventListener("click", async () => {
+      const email = document.getElementById("emailInput").value;
+      const password = document.getElementById("passwordInput").value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+        alert("Invalid login: " + error.message);
+      }
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById("loginCard").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+        listenToCodes();
+      }
+    });
+
+    // --- Helper: Random Code Generator ---
+    function makeCode() {
+      return `GV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    }
+
+    // --- Generate Single Code ---
+    document.getElementById("generateBtn").addEventListener("click", async () => {
+      const newCode = makeCode();
+      await setDoc(doc(db, "vouchers", newCode), {
+        isClaimed: false,
+        assignedEmail: "",
+        createdAt: new Date().toISOString()
+      });
+    });
+
+    // --- Bulk Generate (10 codes) ---
+    document.getElementById("bulkGenerateBtn").addEventListener("click", async () => {
+      const batch = writeBatch(db);
+      for(let i=0; i<10; i++) {
+        const code = makeCode();
+        batch.set(doc(db, "vouchers", code), {
+          isClaimed: false,
+          assignedEmail: "",
+          createdAt: new Date().toISOString()
+        });
+      }
+      await batch.commit();
+      alert("10 Codes Generated!");
+    });
+
+    // --- Real-time Dashboard Listener ---
+    function listenToCodes() {
+      const codesList = document.getElementById("codesList");
+      
+      // onSnapshot is better than getDocs for admin panels (auto-updates)
+      onSnapshot(collection(db, "vouchers"), (snapshot) => {
+        codesList.innerHTML = "";
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          const div = document.createElement("div");
+          div.className = "code-item";
+          
+          const statusClass = data.isClaimed ? 'status-claimed' : 'status-open';
+          const statusText = data.isClaimed ? `Claimed by: ${data.assignedEmail}` : 'Available';
+
+          div.innerHTML = `
+            <span><strong>${doc.id}</strong></span>
+            <span class="${statusClass}">${statusText}</span>
+          `;
+          codesList.appendChild(div);
+        });
+      });
+    }
+  </script>
+</body>
+</html>

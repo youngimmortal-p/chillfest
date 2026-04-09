@@ -1,60 +1,151 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Ticket Scanner</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GV Terminal | Scanner</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    
+    <style>
+        :root {
+            --bg-dark: #02050c;
+            --electric-blue: #00e0ff;
+            --accent-gold: #ffc400;
+            --success-green: #00ff88;
+            --error-red: #ff4d4d;
+        }
 
-  
+        body {
+            margin: 0; font-family: 'Segoe UI', sans-serif;
+            background: var(--bg-dark); color: white;
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+        }
 
-  <!-- QR Camera Scanner -->
-  <script src="https://unpkg.com/html5-qrcode"></script>
+        .header {
+            width: 100%; padding: 20px; text-align: center;
+            background: rgba(5, 15, 40, 0.9); border-bottom: 2px solid var(--electric-blue);
+        }
 
-  <link rel="stylesheet" href="styles.css">
+        h1 { color: var(--accent-gold); text-transform: uppercase; letter-spacing: 3px; margin: 0; font-size: 20px; }
+
+        #reader {
+            width: 100%; max-width: 400px; margin-top: 20px;
+            border: 2px solid var(--electric-blue) !important;
+            border-radius: 12px; overflow: hidden;
+        }
+
+        .result-card {
+            display: none; width: 90%; max-width: 380px; margin-top: 20px;
+            padding: 20px; border-radius: 12px; text-align: center;
+            animation: slideUp 0.3s ease;
+        }
+
+        .status-valid { background: rgba(0, 255, 136, 0.15); border: 2px solid var(--success-green); color: var(--success-green); }
+        .status-invalid { background: rgba(255, 77, 77, 0.15); border: 2px solid var(--error-red); color: var(--error-red); }
+
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+        button.reset-btn {
+            margin-top: 15px; padding: 10px 20px; background: var(--electric-blue);
+            border: none; border-radius: 5px; color: black; font-weight: bold; cursor: pointer;
+        }
+    </style>
 </head>
 <body>
 
-<div class="container">
-  <h2>📡 Scan Ticket</h2>
+    <div class="header">
+        <h1>GV // ENTRY TERMINAL</h1>
+    </div>
 
-  <!-- CAMERA -->
-  <div id="reader" style="width:100%;"></div>
+    <div id="reader"></div>
 
-  <!-- RESULT -->
-  <div id="result" style="margin-top:20px; font-size:18px; text-align:center;"></div>
-</div>
-<script type="module" id="firebase-init">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-  import {
-    getFirestore,
-    collection,
-    getDocs,
-    doc,
-    getDoc,
-    setDoc,
-    updateDoc,
-    serverTimestamp
-  } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    <div id="resultCard" class="result-card">
+        <h2 id="resultStatus">VALIDATING...</h2>
+        <p id="attendeeName" style="font-size: 24px; font-weight: bold; margin: 10px 0; color: white;"></p>
+        <p id="attendeeEmail" style="font-size: 14px; opacity: 0.8;"></p>
+        <button class="reset-btn" onclick="resetScanner()">SCAN NEXT</button>
+    </div>
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBqrO6qxMSEzP-QX8WYIxSDruHvHbweR3w",
-    authDomain: "ticket-ab343.firebaseapp.com",
-    projectId: "ticket-ab343"
-  };
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-app.js";
+    import { getFirestore, collection, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/12.11.0/firebase-firestore.js";
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
+    const firebaseConfig = {
+        apiKey: "AIzaSyBqrO6qxMSEzP-QX8WYIxSDruHvHbweR3w",
+        authDomain: "ticket-ab343.firebaseapp.com",
+        projectId: "ticket-ab343",
+        storageBucket: "ticket-ab343.firebasestorage.app",
+        messagingSenderId: "248675766848",
+        appId: "1:248675766848:web:79aa612820e7ee7ec605a5"
+    };
 
-  // expose to global scope
-  window.firebaseV9 = {
-    db,
-    collection,
-    getDocs,
-    doc,
-    getDoc,
-    setDoc,
-    updateDoc,
-    serverTimestamp
-  };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const html5QrCode = new Html5Qrcode("reader");
+    const resultCard = document.getElementById("resultCard");
+    const resultStatus = document.getElementById("resultStatus");
+
+    // START SCANNER
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess);
+
+    async function onScanSuccess(decodedText) {
+        // Stop scanning while processing
+        html5QrCode.pause();
+        
+        resultCard.style.display = "block";
+        resultCard.className = "result-card";
+        resultStatus.innerText = "VERIFYING...";
+
+        try {
+            // Search vouchers for the scanned Ticket ID
+            const q = query(collection(db, "vouchers"), where("ticketId", "==", decodedText));
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                showInvalid("TICKET NOT FOUND");
+            } else {
+                const ticketDoc = querySnapshot.docs[0];
+                const data = ticketDoc.data();
+
+                if (data.checkedIn) {
+                    showInvalid("ALREADY CHECKED IN");
+                    document.getElementById("attendeeName").innerText = data.userName;
+                } else {
+                    // Mark as used in database
+                    await updateDoc(doc(db, "vouchers", ticketDoc.id), {
+                        checkedIn: true,
+                        checkInTime: new Date().toISOString()
+                    });
+                    
+                    showValid(data.userName, data.assignedEmail);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            showInvalid("DATABASE ERROR");
+        }
+    }
+
+    function showValid(name, email) {
+        resultCard.classList.add("status-valid");
+        resultStatus.innerText = "ACCESS GRANTED";
+        document.getElementById("attendeeName").innerText = name;
+        document.getElementById("attendeeEmail").innerText = email;
+    }
+
+    function showInvalid(msg) {
+        resultCard.classList.add("status-invalid");
+        resultStatus.innerText = msg;
+        document.getElementById("attendeeName").innerText = "---";
+        document.getElementById("attendeeEmail").innerText = "";
+    }
+
+    window.resetScanner = () => {
+        resultCard.style.display = "none";
+        html5QrCode.resume();
+    };
 </script>
-<script src="scan.js"></script>
 </body>
 </html>
