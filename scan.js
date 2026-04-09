@@ -1,14 +1,4 @@
-// 🔥 Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyBqrO6qxMSEzP-QX8WYIxSDruHvHbweR3w",
-  authDomain: "ticket-ab343.firebaseapp.com",
-  projectId: "ticket-ab343",
-};
 
-document.addEventListener("DOMContentLoaded", () => {
-  console.log(firebase)
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
 
 const resultDiv = document.getElementById("result");
 
