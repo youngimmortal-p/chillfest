@@ -1,26 +1,208 @@
-body {
-  font-family: Arial, sans-serif;
-  background: #f5f5f5;
+/* ===== GLOBAL ===== */
+/* ===== GLOBAL ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', sans-serif;
 }
 
+body {
+  background: radial-gradient(circle at top, #061a3a, #02040a);
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* ✅ FIX: prevents mobile blocking */
+  min-height: 100dvh;       /* ✅ FIX: better mobile viewport */
+  padding: 20px;            /* ✅ spacing so inputs are reachable */
+  overflow-y: auto;         /* ✅ allow scrolling */
+}
+
+/* ===== BACKGROUND GLOW ===== */
+body::before {
+  content: "";
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  background: #007bff;
+  filter: blur(150px);
+  opacity: 0.2;
+  top: 10%;
+  left: 10%;
+  z-index: -1;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  width: 400px;
+  height: 400px;
+  background: #ffd700;
+  filter: blur(150px);
+  opacity: 0.15;
+  bottom: 10%;
+  right: 10%;
+  z-index: -1;
+}
+
+/* ===== CONTAINER ===== */
 .container {
-  max-width: 400px;
-  margin: 50px auto;
-  padding: 20px;
-  background: white;
+  width: 100%;
+  max-width: 420px;
+  padding: 25px;
+  border-radius: 18px;
+  background: rgba(10, 20, 50, 0.6);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 0 30px rgba(0, 140, 255, 0.5);
+  border: 1px solid rgba(0, 140, 255, 0.4);
+  animation: fadeIn 0.8s ease-in-out;
+}
+
+/* ===== TITLE ===== */
+h2 {
+  text-align: center;
+  color: #ffd700;
+  text-shadow: 0 0 10px #ffd700;
+  margin-bottom: 20px;
+  letter-spacing: 2px;
+}
+
+/* ===== INPUTS ===== */
+input {
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
   border-radius: 10px;
+  border: none;
+  background: #0f2a5a;
+  color: #fff;
+  outline: none;
+  transition: 0.3s;
+  touch-action: manipulation; /* ✅ FIX: mobile tap */
+}
+
+input:focus {
+  box-shadow: 0 0 15px #007bff;
+  border: 1px solid #ffd700;
+}
+
+/* ===== BUTTON ===== */
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #007bff, #00d4ff);
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+  touch-action: manipulation;
+}
+
+button:hover {
+  background: linear-gradient(90deg, #ffd700, #ffb300);
+  color: #000;
+  transform: scale(1.05);
+}
+
+/* ===== TICKET ===== */
+#ticket {
+  margin-top: 25px;
+  padding: 20px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #050f25, #0a1f40);
+  border: 2px solid #007bff;
+  box-shadow:
+    0 0 20px rgba(0,140,255,0.6),
+    inset 0 0 10px rgba(0,140,255,0.3);
+  animation: ticketPop 0.6s ease-out;
+}
+
+/* ===== TICKET TEXT ===== */
+#ticket p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+#ticket span {
+  color: #ffd700;
+  font-weight: bold;
+}
+
+/* ===== STATUS ===== */
+#status {
+  margin-bottom: 10px;
+  font-weight: bold;
   text-align: center;
 }
 
-input {
-  display: block;
-  width: 100%;
-  margin: 10px 0;
-  padding: 10px;
+.status.valid {
+  color: #00ffcc;
+  text-shadow: 0 0 10px #00ffcc;
 }
 
-button {
-  padding: 10px;
-  width: 100%;
-  cursor: pointer;
+.status.used {
+  color: #ff4d4d;
+}
+
+/* ===== QR CODE ===== */
+#qrCode {
+  margin-top: 15px;
+  padding: 15px;
+  background: white;
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  box-shadow: 0 0 20px rgba(255,215,0,0.6);
+}
+
+.dots span {
+  animation: blink 1.4s infinite;
+  opacity: 0;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes blink {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ===== ANIMATIONS ===== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ticketPop {
+  0% { transform: scale(0.8); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 480px) {
+  .container {
+    padding: 18px;
+  }
+
+  h2 {
+    font-size: 18px;
+  }
+
+  button {
+    font-size: 14px;
+  }
+
+  input {
+    font-size: 14px;
+  }
 }
