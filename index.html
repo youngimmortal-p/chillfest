@@ -254,68 +254,95 @@
     async function downloadPDF(id, name, email) {
     const dBtn = document.getElementById("downloadBtn");
     const originalText = dBtn.innerText;
-    dBtn.innerText = "PREPARING FILES...";
+    dBtn.innerText = "ENCRYPTING PASS...";
     dBtn.disabled = true;
 
     try {
-        // 1. Give the browser a moment to ensure the QR is fully painted
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        // 2. Find the QR element (QRCode.js produces either a <img> or a <canvas>)
         const qrContainer = document.getElementById("qrCode");
-        const qrElement = qrContainer.querySelector("img") || qrContainer.querySelector("canvas");
+        let qrData;
 
-        if (!qrElement) {
-            throw new Error("QR Code element not found in DOM");
+        // Securely capture the QR data source
+        const canvasElement = qrContainer.querySelector("canvas");
+        if (canvasElement) {
+            qrData = canvasElement.toDataURL("image/png");
+        } else {
+            const imgElement = qrContainer.querySelector("img");
+            qrData = imgElement.src;
         }
 
-        // 3. Use html2canvas with specific settings to avoid corruption
-        const canvas = await html2canvas(qrElement, {
-            scale: 2, // Higher quality
-            useCORS: true, // Prevents "tainted canvas" errors on some hosts
-            logging: false,
-            backgroundColor: "#ffffff"
-        });
-
-        const qrData = canvas.toDataURL("image/png", 1.0);
-
-        // 4. Generate PDF
         const { jsPDF } = window.jspdf;
+        // 100mm x 150mm is a standard VIP Badge size
         const pdf = new jsPDF("p", "mm", [100, 150]);
 
-        // Background
-        pdf.setFillColor(2, 5, 12);
+        // --- BACKGROUND LAYER ---
+        pdf.setFillColor(5, 15, 40); // Deep Navy
         pdf.rect(0, 0, 100, 150, "F");
 
-        // Header
-        pdf.setTextColor(255, 196, 0);
-        pdf.setFontSize(14);
-        pdf.text("GAME VERSE 2026", 50, 15, null, null, "center");
+        // --- DESIGN ACCENTS ---
+        // Top Yellow Banner
+        pdf.setFillColor(255, 196, 0); 
+        pdf.rect(0, 0, 100, 25, "F");
 
-        // Inner Card
-        pdf.setFillColor(5, 15, 40);
-        pdf.roundedRect(10, 25, 80, 110, 4, 4, "F");
+        // Side "Stub" Aesthetic (Vertical Bar)
+        pdf.setFillColor(0, 224, 255); // Electric Blue
+        pdf.rect(0, 0, 8, 150, "F");
 
-        // User Data
+        // --- HEADER TEXT ---
+        pdf.setTextColor(5, 15, 40); // Dark text on yellow
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(18);
+        pdf.text("GAME VERSE", 54, 12, { align: "center" });
+        
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "normal");
+        pdf.text("OFFICIAL ACCESS PROTOCOL // 2026", 54, 18, { align: "center" });
+
+        // --- ATTENDEE BOX ---
+        pdf.setDrawColor(0, 224, 255);
+        pdf.setLineWidth(0.5);
+        pdf.line(15, 35, 90, 35); // Top divider
+
         pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(8);
-        pdf.text("ATTENDEE:", 15, 35);
-        pdf.setFontSize(12);
-        pdf.text(name.toUpperCase(), 15, 42);
+        pdf.setFontSize(9);
+        pdf.text("AUTHORIZED ATTENDEE", 15, 42);
+        
+        pdf.setFontSize(16);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(255, 196, 0); // Name in Gold
+        pdf.text(name.toUpperCase(), 15, 52);
 
+        // --- ACCESS ID BOX ---
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(9);
+        pdf.setFont("helvetica", "normal");
+        pdf.text("VALIDATION HASH", 15, 65);
+        
+        pdf.setFontSize(11);
+        pdf.setFont("courier", "bold"); // Tech/Monospace feel
         pdf.setTextColor(0, 224, 255);
-        pdf.setFontSize(8);
-        pdf.text("VALIDATION ID:", 15, 52);
-        pdf.text(id, 15, 58);
+        pdf.text(id, 15, 72);
 
-        // 5. Add QR Image (Explicitly define dimensions to prevent corruption)
-        pdf.addImage(qrData, "PNG", 25, 65, 50, 50, undefined, 'FAST');
+        // --- QR CODE CONTAINER ---
+        // Background for the QR to make it "Pop"
+        pdf.setFillColor(255, 255, 255);
+        pdf.roundedRect(25, 85, 50, 50, 3, 3, "F");
+        
+        // The QR Code itself
+        pdf.addImage(qrData, "PNG", 27, 87, 46, 46, undefined, 'FAST');
 
-        pdf.save(`Ticket_${id}.pdf`);
+        // --- FOOTER / SECURITY ---
+        pdf.line(15, 142, 90, 142); // Bottom divider
+        pdf.setTextColor(0, 224, 255);
+        pdf.setFont("helvetica", "italic");
+        pdf.setFontSize(7);
+        pdf.text("DO NOT DUPLICATE // SCAN AT TERMINAL", 54, 146, { align: "center" });
+
+        // Final Trigger
+        pdf.save(`GV26_Ticket_${name.replace(/\s+/g, '_')}.pdf`);
 
     } catch (e) {
-        console.error("PDF Generation Error:", e);
-        alert("Extraction Failed: Please try again in a moment.");
+        console.error("PDF Final Render Error:", e);
+        alert("The secure transfer failed. Please try again.");
     } finally {
         dBtn.innerText = originalText;
         dBtn.disabled = false;
